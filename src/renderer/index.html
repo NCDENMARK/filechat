@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FileChat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+            background: linear-gradient(135deg, #0a0a0a 0%, #000 100%);
+        }
+        .sidebar {
+            width: 320px;
+            background: rgba(255, 255, 255, 0.02);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .sidebar h2 {
+            font-size: 18px;
+            font-weight: 400;
+            letter-spacing: -0.5px;
+            margin-bottom: 32px;
+            opacity: 0.9;
+        }
+        .folder-button {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .folder-button:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+        #selectedPath {
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 11px;
+            margin: 16px 0;
+            word-break: break-all;
+            line-height: 1.4;
+        }
+        .status-box {
+            padding: 12px;
+            margin: 16px 0;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+            flex-shrink: 0;
+        }
+        .status-box.success {
+            border-color: rgba(34, 197, 94, 0.3);
+            background: rgba(34, 197, 94, 0.05);
+            color: rgba(34, 197, 94, 0.9);
+        }
+        .status-box.loading {
+            border-color: rgba(251, 191, 36, 0.3);
+            background: rgba(251, 191, 36, 0.05);
+            color: rgba(251, 191, 36, 0.9);
+        }
+        .status-box.error {
+            border-color: rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.05);
+            color: rgba(239, 68, 68, 0.9);
+        }
+        .search-mode-section {
+            margin: 16px 0;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+        .search-mode-title {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+        .radio-option {
+            margin: 10px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .radio-option input[type="radio"] {
+            margin-top: 3px;
+            cursor: pointer;
+        }
+        .radio-option label {
+            cursor: pointer;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+            flex: 1;
+        }
+        .radio-help-text {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+        .folders-searching {
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 6px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        .folders-searching-title {
+            font-size: 11px;
+            color: rgba(59, 130, 246, 0.8);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .folder-path-item {
+            font-size: 11px;
+            color: rgba(59, 130, 246, 0.9);
+            padding: 4px 0;
+            word-break: break-all;
+            line-height: 1.3;
+        }
+        .file-counter {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            margin-top: 16px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 16px;
+        }
+        .file-list-container {
+            margin-top: 8px;
+        }
+        .file-list {
+            display: flex;
+            flex-direction: column;
+        }
+        .file-item {
+            padding: 12px;
+            margin: 4px 0;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s;
+        }
+        .file-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 32px;
+        }
+        .chat-area {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 32px;
+            overflow-y: auto;
+            margin-bottom: 24px;
+        }
+        .message {
+            margin: 16px 0;
+            line-height: 1.6;
+        }
+        .message strong {
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: 400;
+            font-size: 12px;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .message-content {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 15px;
+        }
+        .input-container {
+            display: flex;
+            gap: 12px;
+        }
+        #questionInput {
+            flex: 1;
+            padding: 18px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: white;
+            border-radius: 12px;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+        #questionInput:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        #questionInput::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+        .send-button {
+            padding: 18px 32px;
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .send-button:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.12);
+            color: white;
+        }
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        .clear-button {
+            width: 100%;
+            padding: 12px 16px;
+            margin-top: 12px;
+            background: rgba(220, 53, 69, 0.1);
+            border: 1px solid rgba(220, 53, 69, 0.3);
+            color: rgba(220, 53, 69, 0.9);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .clear-button:hover {
+            background: rgba(220, 53, 69, 0.2);
+            border-color: rgba(220, 53, 69, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>FileChat</h2>
+            <button class="folder-button" onclick="selectFolder()">
+                <span>📁</span>
+                <span>Select Folder</span>
+            </button>
+            <div id="selectedPath"></div>
+            <button class="clear-button" onclick="clearDatabase()">Clear Database</button>
+            <div style="font-size: 11px; color: rgba(255, 255, 255, 0.4); margin-top: 8px; line-height: 1.4;">
+                Clear when switching to unrelated projects or to free up space
+            </div>
+            
+            <!-- Status box for notifications -->
+            <div id="statusBox" style="display: none;"></div>
+            
+            <!-- Search mode selector -->
+            <div class="search-mode-section" id="searchModeSection" style="display: none;">
+                <div class="search-mode-title">Search Mode</div>
+                <div class="radio-option">
+                    <input type="radio" id="currentFolderOnly" name="searchMode" value="current" checked onchange="updateSearchMode()">
+                    <label for="currentFolderOnly">
+                        <div>Search only current folder</div>
+                        <div class="radio-help-text">Best for focused work on a specific project or course</div>
+                    </label>
+                </div>
+                <div class="radio-option">
+                    <input type="radio" id="allFolders" name="searchMode" value="all" onchange="updateSearchMode()">
+                    <label for="allFolders">
+                        <div>Search across all folders</div>
+                        <div class="radio-help-text">Best for finding connections across multiple projects</div>
+                    </label>
+                </div>
+                
+                <!-- Display which folders are being searched -->
+                <div class="folders-searching" id="foldersSearching" style="display: none;">
+                    <div class="folders-searching-title">Searching in:</div>
+                    <div id="foldersList"></div>
+                </div>
+            </div>
+            
+            <!-- File counter and list at the bottom -->
+            <div class="file-counter">
+                <span>Files indexed:</span>
+                <span id="fileCount">0</span>
+            </div>
+            
+            <!-- File list with scrolling -->
+            <div class="file-list-container">
+                <div class="file-list" id="fileList"></div>
+            </div>
+        </div>
+        
+        <div class="main">
+            <div class="chat-area" id="chatArea">
+                <div class="message">
+                    <strong>System</strong>
+                    <div class="message-content">Welcome to FileChat! Select a folder to index your PDFs and Word documents.</div>
+                </div>
+            </div>
+            <div class="input-container">
+                <input type="text" id="questionInput" placeholder="Ask a question about your files..." disabled />
+                <button class="send-button" onclick="sendMessage()" disabled id="sendButton">Send</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Load the JavaScript file -->
+    <script src="app.js"></script>
+</body>
+</html>

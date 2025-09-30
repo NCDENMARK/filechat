@@ -1,0 +1,72 @@
+import os
+import hashlib
+from pathlib import Path
+from typing import List, Dict
+import PyPDF2
+
+class PDFProcessor:
+    def __init__(self):
+        # Keep track of files we've already processed
+        self.processed_files = set()
+    
+    def scan_directory(self, directory_path: str) -> List[str]:
+        """Find all PDF files in a given folder"""
+        pdf_files = []  # List to store found PDF paths
+        path = Path(directory_path)  # Convert string to Path object
+        
+        # Check if the directory exists and is actually a directory
+        if path.exists() and path.is_dir():
+            # Find all files ending in .pdf (case-insensitive)
+            for pdf_path in path.glob("*.pdf"):
+                pdf_files.append(str(pdf_path))  # Add full path to list
+        
+        return pdf_files  # Return list of PDF file paths
+    
+    def extract_text(self, pdf_path: str) -> Dict:
+        """Pull all text out of a PDF file"""
+        try:
+            # Open the PDF file in binary read mode
+            with open(pdf_path, 'rb') as file:
+                reader = PyPDF2.PdfReader(file)  # Create PDF reader object
+                text = ""  # String to accumulate all text
+                
+                # Loop through each page
+                for page_num, page in enumerate(reader.pages, 1):
+                    page_text = page.extract_text()  # Extract text from this page
+                    # Add page marker and text to our accumulator
+                    text += f"\n\n--- Page {page_num} ---\n{page_text}"
+                
+                # Create a unique ID for this file using MD5 hash
+                file_id = hashlib.md5(pdf_path.encode()).hexdigest()
+                
+                # Return all the extracted information
+                return {
+                    "file_id": file_id,  # Unique identifier
+                    "file_path": pdf_path,  # Full path to file
+                    "file_name": Path(pdf_path).name,  # Just the filename
+                    "text": text,  # All extracted text
+                    "page_count": len(reader.pages),  # Number of pages
+                    "status": "success"  # Extraction worked
+                }
+        except Exception as e:
+            # If something goes wrong, return error info
+            return {
+                "file_path": pdf_path,
+                "file_name": Path(pdf_path).name,
+                "status": "error",
+                "error": str(e)  # What went wrong
+            }
+    
+    def split_into_chunks(self, text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
+        """Break long text into smaller, overlapping pieces"""
+        words = text.split()  # Split text into individual words
+        chunks = []  # List to store text chunks
+        
+        # Move through the text in steps of (chunk_size - overlap)
+        for i in range(0, len(words), chunk_size - overlap):
+            # Take chunk_size words starting from position i
+            chunk = ' '.join(words[i:i + chunk_size])
+            if chunk:  # Only add non-empty chunks
+                chunks.append(chunk)
+        
+        return chunks
