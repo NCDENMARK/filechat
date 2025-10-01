@@ -2,11 +2,15 @@ import os
 from pathlib import Path
 from openai import OpenAI
 
-# 🔑 OpenAI API key (replace with your real key or load from env var)
-OPENAI_API_KEY = os.getenv(
-    "OPENAI_API_KEY",
-    "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"
-)
+# 🔑 OpenAI API key - MUST be set as environment variable
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+if not OPENAI_API_KEY:
+    raise ValueError(
+        "OPENAI_API_KEY environment variable is not set. "
+        "Please set it before running the application.\n"
+        "Example: export OPENAI_API_KEY='your-key-here'"
+    )
 
 # ✅ Shared OpenAI client
 OPENAI_CLIENT = OpenAI(api_key=OPENAI_API_KEY)
