@@ -149,7 +149,7 @@ async function selectFolder() {
     }
 }
 
-// Send folder to backend for indexing PDFs and Word documents
+// Send folder to backend for indexing PDFs, Word documents, and PowerPoints
 async function indexFolder(folderPath) {
     showStatus('Indexing files...', 'loading');
     
@@ -173,7 +173,9 @@ async function indexFolder(folderPath) {
             
             const pdfText = data.pdf_count ? `${data.pdf_count} PDF${data.pdf_count > 1 ? 's' : ''}` : '';
             const wordText = data.word_count ? `${data.word_count} Word doc${data.word_count > 1 ? 's' : ''}` : '';
-            const filesText = [pdfText, wordText].filter(t => t).join(' and ');
+            const ppText = data.pp_count ? `${data.pp_count} PowerPoint${data.pp_count > 1 ? 's' : ''}` : '';
+            const excelText = data.excel_count ? `${data.excel_count} Excel file${data.excel_count > 1 ? 's' : ''}` : '';
+            const filesText = [pdfText, wordText, ppText, excelText].filter(t => t).join(', ');
             
             showStatus(`Successfully indexed ${filesText}`, 'success');
             
@@ -199,7 +201,7 @@ async function indexFolder(folderPath) {
 
 // Mock indexing for testing without backend
 function mockIndexFolder() {
-    const mockFiles = ['Document1.pdf', 'Document2.pdf', 'Document3.docx'];
+    const mockFiles = ['Document1.pdf', 'Document2.pdf', 'Document3.docx', 'Presentation1.pptx', 'Data1.xlsx'];
     updateFileList(mockFiles);
     updateFileCount(mockFiles.length);
     showStatus(`Indexed ${mockFiles.length} files (mock mode)`, 'success');
@@ -209,7 +211,14 @@ function mockIndexFolder() {
 function updateFileList(files) {
     const fileListElement = document.getElementById('fileList');
     fileListElement.innerHTML = files.map(file => {
-        const icon = file.endsWith('.docx') || file.endsWith('.doc') ? '📄' : '📕';
+        let icon = '📕'; // Default PDF icon
+        if (file.endsWith('.docx') || file.endsWith('.doc')) {
+            icon = '📄'; // Word icon
+        } else if (file.endsWith('.pptx') || file.endsWith('.ppt')) {
+            icon = '📊'; // PowerPoint icon
+        } else if (file.endsWith('.xlsx') || file.endsWith('.xls')) {
+            icon = '📈'; // Excel icon
+        }
         return `<div class="file-item">${icon} ${file}</div>`;
     }).join('');
 }

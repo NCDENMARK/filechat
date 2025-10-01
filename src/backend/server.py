@@ -7,6 +7,8 @@ import os
 # Import our custom modules
 from pdf_processor import PDFProcessor
 from word_processor import WordProcessor
+from pp_processor import PPProcessor
+from excel_processor import ExcelProcessor
 from vector_store import VectorStore
 from chat_engine import ChatEngine
 from config import CHUNK_SIZE, CHUNK_OVERLAP
@@ -26,12 +28,14 @@ app.add_middleware(
 # Create instances of our classes - chat_engine uses shared vector_store
 pdf_processor = PDFProcessor()
 word_processor = WordProcessor()
+pp_processor = PPProcessor()
+excel_processor = ExcelProcessor()
 vector_store = VectorStore()
 chat_engine = ChatEngine(vector_store)  # Pass the shared instance
 
 # Define what the incoming requests should look like
 class IndexRequest(BaseModel):
-    folder_path: str  # Path to folder containing PDFs and Word docs
+    folder_path: str  # Path to folder containing PDFs, Word docs, PowerPoints, and Excel files
 
 class ChatRequest(BaseModel):
     question: str  # User's question
@@ -65,20 +69,24 @@ async def clear_database():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Endpoint to index PDFs and Word documents in a folder
+# Endpoint to index PDFs, Word documents, PowerPoint presentations, and Excel files in a folder
 @app.post("/index")
 async def index_folder(request: IndexRequest):
-    """Process all PDFs and Word documents in the specified folder"""
+    """Process all PDFs, Word documents, PowerPoints, and Excel files in the specified folder"""
     try:
-        # Step 1: Find all PDFs and Word documents in the folder
+        # Step 1: Find all PDFs, Word documents, PowerPoints, and Excel files in the folder
         pdf_files = pdf_processor.scan_directory(request.folder_path)
         word_files = word_processor.scan_directory(request.folder_path)
+        pp_files = pp_processor.scan_directory(request.folder_path)
+        excel_files = excel_processor.scan_directory(request.folder_path)
         
-        if not pdf_files and not word_files:
-            return {"status": "no_files", "message": "No PDF or Word files found in the directory"}
+        if not pdf_files and not word_files and not pp_files and not excel_files:
+            return {"status": "no_files", "message": "No PDF, Word, PowerPoint, or Excel files found in the directory"}
         
         indexed_pdf_files = []  # Track successfully processed PDFs
         indexed_word_files = []  # Track successfully processed Word docs
+        indexed_pp_files = []  # Track successfully processed PowerPoints
+        indexed_excel_files = []  # Track successfully processed Excel files
         
         # Step 2: Process each PDF
         for pdf_path in pdf_files:
@@ -134,8 +142,62 @@ async def index_folder(request: IndexRequest):
                 
                 indexed_word_files.append(word_data["file_name"])
         
+        # Step 4: Process each PowerPoint presentation
+        for pp_path in pp_files:
+            # Extract all text from the PowerPoint
+            pp_data = pp_processor.extract_text(pp_path)
+            
+            if pp_data["status"] == "success":
+                # Break text into smaller chunks
+                chunks = pp_processor.split_into_chunks(
+                    pp_data["text"],
+                    CHUNK_SIZE,  # 500 words per chunk
+                    CHUNK_OVERLAP  # 50 word overlap
+                )
+                
+                # Store chunks in vector database with folder information
+                vector_store.add_documents(
+                    chunks,
+                    {
+                        "file_name": pp_data["file_name"],
+                        "file_path": pp_data["file_path"],
+                        "file_type": "PowerPoint",
+                        "folder_path": request.folder_path
+                    },
+                    pp_data["file_id"]
+                )
+                
+                indexed_pp_files.append(pp_data["file_name"])
+        
+        # Step 5: Process each Excel file
+        for excel_path in excel_files:
+            # Extract all data from the Excel file
+            excel_data = excel_processor.extract_text(excel_path)
+            
+            if excel_data["status"] == "success":
+                # Break text into smaller chunks
+                chunks = excel_processor.split_into_chunks(
+                    excel_data["text"],
+                    CHUNK_SIZE,  # 500 words per chunk
+                    CHUNK_OVERLAP  # 50 word overlap
+                )
+                
+                # Store chunks in vector database with folder information
+                vector_store.add_documents(
+                    chunks,
+                    {
+                        "file_name": excel_data["file_name"],
+                        "file_path": excel_data["file_path"],
+                        "file_type": "Excel",
+                        "folder_path": request.folder_path
+                    },
+                    excel_data["file_id"]
+                )
+                
+                indexed_excel_files.append(excel_data["file_name"])
+        
         # Combine all indexed files
-        all_indexed_files = indexed_pdf_files + indexed_word_files
+        all_indexed_files = indexed_pdf_files + indexed_word_files + indexed_pp_files + indexed_excel_files
         
         # Return summary of what was indexed
         return {
@@ -144,6 +206,8 @@ async def index_folder(request: IndexRequest):
             "total_files": len(all_indexed_files),
             "pdf_count": len(indexed_pdf_files),
             "word_count": len(indexed_word_files),
+            "pp_count": len(indexed_pp_files),
+            "excel_count": len(indexed_excel_files),
             "folder_path": request.folder_path
         }
         
